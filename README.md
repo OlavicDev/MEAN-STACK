@@ -125,4 +125,21 @@ app.listen(app.get('port'), function() {
 });
 
 ```
+## Step3 Install Express and setup routes to the server
+Express is a minimal and flexible `Node.js` web application framework that provides features for web and mobile applications
+
+```
+sudo npm install express mongoose
+```
+In Books folder create a folder named app 
+```
+mkdir apps && cd apps
+```
+Create a file `routes.js`
+```
+vim routes.js
+```
+Copy and paste
+```
+
 
