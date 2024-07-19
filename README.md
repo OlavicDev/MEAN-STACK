@@ -141,5 +141,281 @@ vim routes.js
 ```
 Copy and paste
 ```
+const Book = require('./models/book');
+const path = require('path');
+
+module.exports = function(app) {
+  // Get all books
+  app.get('/book', async (req, res) => {
+    try {
+      const books = await Book.find({});
+      res.json(books);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+  // Add a new book
+  app.post('/book', async (req, res) => {
+    try {
+      const book = new Book({
+        name: req.body.name,
+        isbn: req.body.isbn,
+        author: req.body.author,
+        pages: req.body.pages
+      });
+      const result = await book.save();
+      res.json({
+        message: "Successfully added book",
+        book: result
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+  // Update a book
+  app.put('/book/:isbn', async (req, res) => {
+    try {
+      const updatedBook = await Book.findOneAndUpdate(
+        { isbn: req.params.isbn },
+        req.body,
+        { new: true }
+      );
+      if (!updatedBook) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+      res.json({
+        message: "Successfully updated the book",
+        book: updatedBook
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+  // Delete a book
+  app.delete('/book/:isbn', async (req, res) => {
+    try {
+      const result = await Book.findOneAndRemove({ isbn: req.params.isbn });
+      if (!result) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+      res.json({
+        message: "Successfully deleted the book",
+        book: result
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
+  // Serve static files
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
+  });
+};
+
+```
+In the 'apps' folder, create a folder named models
+```
+mkdir models
+cd models
+```
+Create a file `books.js`
+```
+vim book.js
+```
+copy and paste 
+```
+const mongoose = require('mongoose');
+
+const bookSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  isbn: { type: String, required: true, unique: true },
+  author: { type: String, required: true },
+  pages: { type: Number, required: true }
+});
+
+module.exports = mongoose.model('Book', bookSchema);
+```
+
+## Step 4 Access the routes with AngularJS
+AngularJS will be used to connect our web page with Express and perform actions on our book register Change directory to the books
+```
+cd ../..
+```
+Create and open a folder named public
+```
+mkdir public && cd public
+```
+Add and open a file named script.js
+```
+vim script.js
+```
+Copy and paste
+```
+var app = angular.module('myApp', []);
+
+app.controller('myCtrl', function($scope, $http) {
+  // Get all books
+  function getAllBooks() {
+    $http({
+      method: 'GET',
+      url: '/book'
+    }).then(function successCallback(response) {
+      $scope.books = response.data;
+    }, function errorCallback(response) {
+      console.log('Error: ' + response.data);
+    });
+  }
+
+  // Initial load of books
+  getAllBooks();
+
+  // Add a new book
+  $scope.add_book = function() {
+    var body = {
+      name: $scope.Name,
+      isbn: $scope.Isbn,
+      author: $scope.Author,
+      pages: $scope.Pages
+    };
+    $http({
+      method: 'POST',
+      url: '/book',
+      data: body
+    }).then(function successCallback(response) {
+      console.log(response.data);
+      getAllBooks();  // Refresh the book list
+      // Clear the input fields
+      $scope.Name = '';
+      $scope.Isbn = '';
+      $scope.Author = '';
+      $scope.Pages = '';
+    }, function errorCallback(response) {
+      console.log('Error: ' + response.data);
+    });
+  };
+
+  // Update a book
+  $scope.update_book = function(book) {
+    var body = {
+      name: book.name,
+      isbn: book.isbn,
+      author: book.author,
+      pages: book.pages
+    };
+    $http({
+      method: 'PUT',
+      url: '/book/' + book.isbn,
+      data: body
+    }).then(function successCallback(response) {
+      console.log(response.data);
+      getAllBooks();  // Refresh the book list
+    }, function errorCallback(response) {
+      console.log('Error: ' + response.data);
+    });
+  };
+
+  // Delete a book
+  $scope.delete_book = function(isbn) {
+    $http({
+      method: 'DELETE',
+      url: '/book/' + isbn
+    }).then(function successCallback(response) {
+      console.log(response.data);
+      getAllBooks();  // Refresh the book list
+    }, function errorCallback(response) {
+      console.log('Error: ' + response.data);
+    });
+  };
+});
+```
+In 'public' folder, create and open a file named index.html
+```
+vim index.html
+```
+Copy and paste the code below in it
+```
+<!DOCTYPE html>
+<html ng-app="myApp" ng-controller="myCtrl">
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+  <script src="script.js"></script>
+  <style>
+    /* Add your custom CSS styles here */
+  </style>
+</head>
+<body>
+  <div>
+    <table>
+      <tr>
+        <td>Name:</td>
+        <td><input type="text" ng-model="Name"></td>
+      </tr>
+      <tr>
+        <td>Isbn:</td>
+        <td><input type="text" ng-model="Isbn"></td>
+      </tr>
+      <tr>
+        <td>Author:</td>
+        <td><input type="text" ng-model="Author"></td>
+      </tr>
+      <tr>
+        <td>Pages:</td>
+        <td><input type="number" ng-model="Pages"></td>
+      </tr>
+    </table>
+    <button ng-click="add_book()">Add</button>
+    <div ng-if="successMessage">{{ successMessage }}</div>
+    <div ng-if="errorMessage">{{ errorMessage }}</div>
+  </div>
+  <hr>
+  <div>
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>Isbn</th>
+        <th>Author</th>
+        <th>Page</th>
+        <th>Action</th>
+      </tr>
+      <tr ng-repeat="book in books">
+        <td>{{ book.name }}</td>
+        <td>{{ book.isbn }}</td>
+        <td>{{ book.author }}</td>
+        <td>{{ book.pages }}</td>
+        <td><button ng-click="del_book(book)">Delete</button></td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+```
+Change the directory back to book
+```
+cd ..
+```
+Start the server by running this command
+```
+node server.js
+```
+![image](https://github.com/user-attachments/assets/2b24e80c-832c-4c08-8106-745e0c7f86fa)
+
+check it out in a browser
+![image](https://github.com/user-attachments/assets/19e2e695-bfd6-4229-b4d6-ebcf63c255ae)
+our application is working right 
+
+## Conclusion
+The MEAN stack—comprising MongoDB, Express.js, Angular, and Node.js—provides a powerful and cohesive framework for building dynamic and scalable web applications. By leveraging JavaScript across both the client and server sides, developers can streamline the development process and enhance productivity.
+
+
+ 
+
 
 
